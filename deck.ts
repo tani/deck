@@ -43,9 +43,9 @@ app.get('/', async (c) => {
     return c.html(page)
   } catch (err: unknown) {
     if (err instanceof Error) {
-      return c.text(Error: ${err.message}, 500)
+      return c.text(`Error: ${err.message}`, 500)
     } else {
-      return c.text(Error: ${err}, 500)
+      return c.text(`Error: ${err}`, 500)
     }
   }
 })
