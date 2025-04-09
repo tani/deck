@@ -21,7 +21,7 @@ app.get('/', async (c) => {
 
     const { html, css } = marp.render(md)
 
-    const page = 
+    const page = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -38,7 +38,7 @@ app.get('/', async (c) => {
           ${html}
         </body>
       </html>
-    
+    `
 
     return c.html(page)
   } catch (err: unknown) {
