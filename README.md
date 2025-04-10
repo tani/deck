@@ -29,7 +29,7 @@ by tani
 ## Workflow
 1. Prepare a Markdown file
 2. Access the service with the Markdown file's URL specified as a parameter  
-   https://slides.deno.dev/?url=https://raw.githubusercontent.com/tani/deck/refs/heads/main/README.md
+   https://slides.deno.dev/html?url=https://raw.githubusercontent.com/tani/deck/refs/heads/main/README.md
 3. The server fetches the specified file and converts it using Marp
 4. A page containing the converted HTML and CSS is returned, and the slides are displayed
 
