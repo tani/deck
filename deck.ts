@@ -169,7 +169,7 @@ app.get('/', (c) => {
           <a href="https://github.com/tani/slides" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
         </div>
         <div class="container py-5">
-          <h1 class="mb-4">Markdown Slides</h1>
+          <h1 class="mb-4">MD Slides</h1>
           <div class="card shadow-sm">
             <div class="card-body">
               <form x-on:submit.prevent="submitForm">
