@@ -167,11 +167,16 @@ app.get('/', (c) => {
               <div class="mb-3">
                 <label for="format" class="form-label">Select Output Format</label>
                 <select class="form-select" id="format">
-                  <option value="svg">SVG (First Page)</option>
                   <option value="html">HTML</option>
+                  <option value="svg">SVG (Specify Page)</option>
                   <option value="md">Markdown Embed Code</option>
                   <option value="sb">Scrapbox Links</option>
                 </select>
+              </div>
+
+              <div class="mb-3 d-none" id="pageGroup">
+                <label for="page" class="form-label">Page Number (0-based)</label>
+                <input type="number" class="form-control" id="page" min="0" value="0">
               </div>
 
               <button type="submit" class="btn btn-primary">Display / Generate</button>
@@ -192,11 +197,21 @@ app.get('/', (c) => {
       </div>
 
       <script>
+        document.getElementById('format').addEventListener('change', (e) => {
+          const pageGroup = document.getElementById('pageGroup')
+          if (e.target.value === 'svg') {
+            pageGroup.classList.remove('d-none')
+          } else {
+            pageGroup.classList.add('d-none')
+          }
+        })
+
         document.getElementById('slideForm').addEventListener('submit', async (e) => {
           e.preventDefault()
 
           const url = document.getElementById('url').value.trim()
           const format = document.getElementById('format').value
+          const page = document.getElementById('page').value || '0'
           const output = document.getElementById('output')
           const outputLabel = document.getElementById('outputLabel')
           const linkOutput = document.getElementById('linkOutput')
@@ -217,7 +232,7 @@ app.get('/', (c) => {
           }
 
           if (format === 'svg') {
-            const link = \`/svg?url=\${encodeURIComponent(url)}&page=0.svg\`
+            const link = \`/svg?url=\${encodeURIComponent(url)}&page=\${encodeURIComponent(page)}.svg\`
             generatedLink.href = link
             generatedLink.title = link
             generatedLink.textContent = link
