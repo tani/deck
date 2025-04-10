@@ -23,7 +23,7 @@ app.get('/svg', async (c) => {
   if (cached && cached.md === md) {
     pages = cached.pages
   } else {
-    const marp = new Marp()
+    const marp = new Marp({ html: true, emoji: { shortcode: true }, script: false })
     const { html, css } = marp.render(md)
     const cleanedCss = css.replace(/div\.marpit\s*>\s*svg\s*>\s*foreignObject\s*>/g, '')
 
@@ -32,7 +32,6 @@ app.get('/svg', async (c) => {
     pages = $('svg[data-marpit-svg]').map((_i, elem) => {
       const $svg = $(elem)
       $svg.attr('xmlns', 'http://www.w3.org/2000/svg')
-      $svg.find('script').remove()
       const $section = $svg.find('section')
       $section.attr('xmlns', 'http://www.w3.org/1999/xhtml')
       $section.prepend(`<style>${cleanedCss}</style>`)
@@ -59,7 +58,7 @@ app.get('/html', async (c) => {
   }
   const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to fetch markdown')
-  const marp = new Marp()
+  const marp = new Marp({ html: true, emoji: { shortcode: true } })
   const md = await res.text()
   const { html, css } = marp.render(md)
   const page = `
