@@ -32,6 +32,7 @@ app.get('/svg', async (c) => {
     pages = $('svg[data-marpit-svg]').map((_i, elem) => {
       const $svg = $(elem)
       $svg.attr('xmlns', 'http://www.w3.org/2000/svg')
+      $svg.find('script').remove()
       const $section = $svg.find('section')
       $section.attr('xmlns', 'http://www.w3.org/1999/xhtml')
       $section.prepend(`<style>${cleanedCss}</style>`)
