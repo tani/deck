@@ -1,11 +1,10 @@
 import { Hono } from 'npm:hono'
 import { Marp } from 'npm:@marp-team/marp-core'
 import { JSDOM } from 'npm:jsdom'
-import { createHash } from 'node:crypto'
 
 const app = new Hono()
 
-const cache = new Map<string, { hash: string, pages: string[] }>()
+const cache = new Map<string, { md: string, pages: string[] }>()
 
 app.get('/svg', async (c) => {
   const url = c.req.query('url')
@@ -14,20 +13,16 @@ app.get('/svg', async (c) => {
     return c.text('Missing ?url=https://path.to/deck.md', 400)
   }
 
-  // Fetch and hash markdown content
   const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to fetch markdown')
   const md = await res.text()
-  const hash = createHash('sha256').update(md).digest('hex')
 
   let pages: string[] | undefined
   const cached = cache.get(url)
 
-  // Check hash
-  if (cached && cached.hash === hash) {
+  if (cached && cached.md === md) {
     pages = cached.pages
   } else {
-    // Render if not cached or hash mismatch
     const marp = new Marp()
     const { html, css } = marp.render(md)
     const cleanedCss = css.replace(/div\.marpit\s*>\s*svg\s*>\s*foreignObject\s*>/g, '')
@@ -35,7 +30,7 @@ app.get('/svg', async (c) => {
     const document = dom.window.document
     const svgs = document.querySelectorAll('svg[data-marpit-svg]')
 
-    pages = Array.from(svgs).map((node) => {
+    pages = Array.from(svgs as Node[]).map((node) => {
       const svg = node.cloneNode(true) as HTMLElement
       if (!svg.hasAttribute('xmlns')) {
         svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
@@ -57,11 +52,9 @@ app.get('/svg', async (c) => {
       return svg.outerHTML.replace(/<br>/g, '<br />')
     })
 
-    // Save to cache
-    cache.set(url, { hash, pages })
+    cache.set(url, { md, pages })
   }
 
-  // Return SVG
   const pageIndex = parseInt(pageParam ?? '0', 10)
   if (pageIndex < 0 || pageIndex >= pages.length) {
     return c.text(`Invalid page index. Must be 0 <= page < ${pages.length}`, 400)
@@ -82,7 +75,6 @@ app.get('/html', async (c) => {
   const marp = new Marp()
   const md = await res.text()
   const { html, css } = marp.render(md)
-  // Output as standard HTML page when not generating SVG
   const page = `
     <!DOCTYPE html>
     <html>
@@ -147,8 +139,8 @@ app.get('/', (c) => {
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>Marp Slide Viewer</title>
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+      <title>Markdown Slides</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css" rel="stylesheet">
       <style>
         .truncate-link {
           display: inline-block;
@@ -162,13 +154,13 @@ app.get('/', (c) => {
     </head>
     <body class="bg-light">
       <div class="container py-5">
-        <h1 class="mb-4">Marp Slide Viewer</h1>
+        <h1 class="mb-4">Markdown Slides</h1>
 
         <div class="card shadow-sm">
           <div class="card-body">
             <form id="slideForm">
               <div class="mb-3">
-                <label for="url" class="form-label">Slide Markdown URL</label>
+                <label for="url" class="form-label">Markdown URL</label>
                 <input type="url" class="form-control" id="url" placeholder="https://example.com/deck.md" required>
               </div>
 
