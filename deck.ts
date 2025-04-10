@@ -151,8 +151,42 @@ app.get('/', (c) => {
           vertical-align: bottom;
         }
       </style>
+      <style>
+      .github-ribbon {
+        position: absolute;
+        top: 0;
+        right: 0;
+        z-index: 9999;
+        overflow: hidden;
+        width: 150px;
+        height: 150px;
+      }
+
+      .github-ribbon a {
+        position: absolute;
+        display: block;
+        width: 200px;
+        padding: 8px 0;
+        background: #151513;
+        color: #fff;
+        text-align: center;
+        font: 700 13px "Arial", sans-serif;
+        text-decoration: none;
+        transform: rotate(45deg);
+        top: 30px;
+        right: -50px;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+      }
+
+      .github-ribbon a:hover {
+        background-color: #333;
+      }
+    </style>
     </head>
     <body class="bg-light">
+      <div class="github-ribbon">
+         <a href="https://github.com/tani/slides" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
+      </div>
       <div class="container py-5">
         <h1 class="mb-4">Markdown Slides</h1>
 
