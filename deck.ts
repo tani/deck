@@ -1,8 +1,11 @@
 import { Hono } from 'npm:hono'
 import { Marp } from 'npm:@marp-team/marp-core'
 import { JSDOM } from 'npm:jsdom'
+import { createHash } from 'node:crypto'
 
 const app = new Hono()
+
+const cache = new Map<string, { hash: string, pages: string[] }>()
 
 app.get('/svg', async (c) => {
   const url = c.req.query('url')
@@ -10,37 +13,61 @@ app.get('/svg', async (c) => {
   if (!url) {
     return c.text('Missing ?url=https://path.to/deck.md', 400)
   }
+
+  // Fetch and hash markdown content
   const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to fetch markdown')
-  const marp = new Marp()
   const md = await res.text()
-  const { html, css } = marp.render(md)
-  const cleanedCss = css.replace(/div\.marpit\s*>\s*svg\s*>\s*foreignObject\s*>/g, '')
-  const dom = new JSDOM(`<div>${html}</div>`, { contentType: 'text/html' })
-  const document = dom.window.document
-  const svgs = document.querySelectorAll('svg[data-marpit-svg]')
+  const hash = createHash('sha256').update(md).digest('hex')
+
+  let pages: string[] | undefined
+  const cached = cache.get(url)
+
+  // Check hash
+  if (cached && cached.hash === hash) {
+    pages = cached.pages
+  } else {
+    // Render if not cached or hash mismatch
+    const marp = new Marp()
+    const { html, css } = marp.render(md)
+    const cleanedCss = css.replace(/div\.marpit\s*>\s*svg\s*>\s*foreignObject\s*>/g, '')
+    const dom = new JSDOM(`<div>${html}</div>`, { contentType: 'text/html' })
+    const document = dom.window.document
+    const svgs = document.querySelectorAll('svg[data-marpit-svg]')
+
+    pages = Array.from(svgs).map((node) => {
+      const svg = node.cloneNode(true) as HTMLElement
+      if (!svg.hasAttribute('xmlns')) {
+        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+      }
+
+      const foreignObject = svg.querySelector('foreignObject')
+      if (foreignObject) {
+        const xmlns = 'http://www.w3.org/1999/xhtml'
+        const container = document.createElementNS(xmlns, 'div')
+        container.setAttribute('xmlns', xmlns)
+        const style = document.createElementNS(xmlns, 'style')
+        style.innerHTML = cleanedCss
+        container.appendChild(style)
+        container.appendChild(foreignObject.querySelector('section'))
+        foreignObject.innerHTML = ''
+        foreignObject.appendChild(container)
+      }
+
+      return svg.outerHTML.replace(/<br>/g, '<br />')
+    })
+
+    // Save to cache
+    cache.set(url, { hash, pages })
+  }
+
+  // Return SVG
   const pageIndex = parseInt(pageParam ?? '0', 10)
-  if (pageIndex < 0 || pageIndex >= svgs.length) {
-    return c.text(`Invalid page index. Must be 0 <= page < ${svgs.length}`, 400)
+  if (pageIndex < 0 || pageIndex >= pages.length) {
+    return c.text(`Invalid page index. Must be 0 <= page < ${pages.length}`, 400)
   }
-  const svg = svgs[pageIndex].cloneNode(true) as HTMLElement
-  if (!svg.hasAttribute('xmlns')) {
-    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-  }
-  const foreignObject = svg.querySelector('foreignObject')
-  if (foreignObject) {
-    const xmlns = 'http://www.w3.org/1999/xhtml'
-    const container = document.createElementNS(xmlns, 'div')
-    container.setAttribute('xmlns', xmlns)
-    const style = document.createElementNS(xmlns, 'style')
-    style.innerHTML = cleanedCss
-    container.appendChild(style)
-    container.appendChild(foreignObject.querySelector('section'))
-    foreignObject.innerHTML = ''
-    foreignObject.appendChild(container)
-  }
-  const serializedSvg = svg.outerHTML.replace(/<br>/g, '<br />');
-  return c.body(serializedSvg, 200, {
+
+  return c.body(pages[pageIndex], 200, {
     'Content-Type': 'image/svg+xml; charset=utf-8'
   })
 })
