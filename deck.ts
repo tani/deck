@@ -77,178 +77,159 @@ app.get('/html', async (c) => {
   return c.html(page)
 })
 
-app.get('/md', async (c) => {
+app.get('/generate', async (c) => {
   const url = c.req.query('url')
-  if (!url) {
-    return c.text('Missing ?url=https://path.to/deck.md', 400)
-  }
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Failed to fetch markdown')
-  const marp = new Marp()
-  const md = await res.text()
-  const { html } = marp.render(md)
-  const $ = cheerio.load(`<div>${html}</div>`)
-  const svgCount = $('svg[data-marpit-svg]').length
-  let code = ''
-  for (let p = 0; p < svgCount; p++) {
-    code += `![](https://slides.deno.dev/svg?url=${url}&page=${p}.svg)\n`
-  }
-  return c.text(code)
-})
+  const format = c.req.query('format') ?? 'html'
+  const page = parseInt(c.req.query('page') ?? '0')
 
-app.get('/sb', async (c) => {
-  const url = c.req.query('url')
   if (!url) {
     return c.text('Missing ?url=https://path.to/deck.md', 400)
   }
+
+  const renderLinkHTML = (link: string) => `
+    <div id="output" class="mt-4">
+      <div class="alert alert-success">
+        <strong>Link:</strong>
+        <a href="${link}" class="truncate-link" target="_blank" rel="noopener noreferrer">
+          ${link}
+        </a>
+      </div>
+    </div>
+  `
+
+  const renderCodeHTML = (code: string) => `
+    <div id="output" class="mt-4">
+      <div class="alert alert-success">
+        <strong>Code:</strong>
+        <div class="text-bg-light rounded p-3">
+          <pre><code>${code}</code></pre>
+        </div>
+      </div>
+    </div>
+  `
+
+  if (format === 'html') {
+    return c.html(renderLinkHTML(`/html?url=${url}`))
+  }
+
+  if (format === 'svg') {
+    return c.html(renderLinkHTML(`/svg?url=${url}&page=${page}.svg`))
+  }
+
   const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to fetch markdown')
-  const marp = new Marp()
+
   const md = await res.text()
+  const marp = new Marp()
   const { html } = marp.render(md)
   const $ = cheerio.load(`<div>${html}</div>`)
   const svgCount = $('svg[data-marpit-svg]').length
-  let code = ''
-  for (let p = 0; p < svgCount; p++) {
-    code += `[https://slides.deno.dev/svg?url=${url}&page=${p}.svg]\n`
+
+  const generateCode = (prefix: string, wrap = false) => {
+    let output = ''
+    for (let i = 0; i < svgCount; i++) {
+      const line = `${prefix}${url}&page=${i}.svg`
+      output += wrap ? `[${line}]\n` : `![](${line})\n`
+    }
+    return output
   }
-  return c.text(code)
+
+  if (format === 'md') {
+    return c.html(renderCodeHTML(generateCode('https://slides.deno.dev/svg?url=')))
+  }
+
+  if (format === 'sb') {
+    return c.html(renderCodeHTML(generateCode('https://slides.deno.dev/svg?url=', true)))
+  }
+
+  return c.text('Unsupported format', 400)
 })
 
 app.get('/', (c) => {
   const page = `
-    <!DOCTYPE html>
-    <html lang="en" x-data="slideApp()">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>MD Slides</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css" rel="stylesheet">
-        <!-- Alpine.js CDN -->
-        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
-        <style>
-          .truncate-link {
-            display: inline-block;
-            max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            vertical-align: bottom;
-          }
-          .github-ribbon {
-            position: absolute;
-            top: 0;
-            right: 0;
-            z-index: 9999;
-            overflow: hidden;
-            width: 150px;
-            height: 150px;
-          }
-          .github-ribbon a {
-            position: absolute;
-            display: block;
-            width: 200px;
-            padding: 8px 0;
-            background: #151513;
-            color: #fff;
-            text-align: center;
-            font: 700 13px "Arial", sans-serif;
-            text-decoration: none;
-            transform: rotate(45deg);
-            top: 30px;
-            right: -50px;
-            box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
-          }
-          .github-ribbon a:hover {
-            background-color: #333;
-          }
-        </style>
-      </head>
-      <body class="bg-light">
-        <div class="github-ribbon">
-          <a href="https://github.com/tani/slides" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
-        </div>
-        <div class="container py-5">
-          <h1 class="mb-4">MD Slides</h1>
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <form x-on:submit.prevent="submitForm">
-                <div class="mb-3">
-                  <label for="url" class="form-label">Markdown URL</label>
-                  <input type="url" class="form-control" id="url" placeholder="https://example.com/deck.md" x-model="url" required>
-                </div>
-                <div class="mb-3">
-                  <label for="format" class="form-label">Select Output Format</label>
-                  <select class="form-select" id="format" x-model="format">
-                    <option value="html">HTML</option>
-                    <option value="svg">SVG (Specify Page)</option>
-                    <option value="md">Markdown Embed Code</option>
-                    <option value="sb">Scrapbox Links</option>
-                  </select>
-                </div>
-                <div class="mb-3" x-show="format === 'svg'">
-                  <label for="page" class="form-label">Page Number (0-based)</label>
-                  <input type="number" class="form-control" id="page" x-model.number="page" min="0" value="0">
-                </div>
-                <button type="submit" class="btn btn-primary">Display / Generate</button>
-              </form>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MD Slides</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      .truncate-link {
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: bottom;
+      }
+      .github-ribbon {
+        position: absolute;
+        top: 0;
+        right: 0;
+        z-index: 9999;
+        overflow: hidden;
+        width: 150px;
+        height: 150px;
+      }
+      .github-ribbon a {
+        position: absolute;
+        display: block;
+        width: 200px;
+        padding: 8px 0;
+        background: #151513;
+        color: #fff;
+        text-align: center;
+        font: 700 13px "Arial", sans-serif;
+        text-decoration: none;
+        transform: rotate(45deg);
+        top: 30px;
+        right: -50px;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+      }
+      .github-ribbon a:hover {
+        background-color: #333;
+      }
+    </style>
+  </head>
+  <body class="bg-light">
+    <div class="github-ribbon">
+      <a href="https://github.com/tani/slides" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
+    </div>
+    <div class="container py-5">
+      <h1 class="mb-4">MD Slides</h1>
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <form action="/generate#output" target="htmz">
+            <div class="mb-3">
+              <label for="url" class="form-label">Markdown URL</label>
+              <input type="url" class="form-control" name="url" placeholder="https://example.com/deck.md" required>
             </div>
-          </div>
-
-          <div class="mt-4" x-show="generatedLink">
-            <div class="alert alert-success">
-              <strong>Link:</strong>
-              <a :href="generatedLink" class="truncate-link" target="_blank" rel="noopener noreferrer" x-text="generatedLink"></a>
+            <div class="mb-3">
+              <label for="format" class="form-label">Select Output Format</label>
+              <select class="form-select" name="format">
+                <option value="html">HTML</option>
+                <option value="svg">SVG (Specify Page)</option>
+                <option value="md">Markdown Embed Code</option>
+                <option value="sb">Scrapbox Links</option>
+              </select>
             </div>
-          </div>
-
-          <div class="mt-4" x-show="showOutput">
-            <label for="output" class="form-label">Output Result</label>
-            <textarea id="output" class="form-control" rows="6" readonly x-model="output"></textarea>
-          </div>
+            <div class="mb-3">
+              <label for="page" class="form-label">Page Number (0-based)</label>
+              <input type="number" class="form-control" name="page" min="0" value="0">
+            </div>
+            <button type="submit" class="btn btn-primary">Display / Generate</button>
+          </form>
         </div>
+      </div>
 
-        <script>
-          function slideApp() {
-            return {
-              url: '',
-              format: 'html',
-              page: 0,
-              output: '',
-              generatedLink: '',
-              showOutput: false,
-              async submitForm() {
-                this.generatedLink = '';
-                this.output = '';
-                this.showOutput = false;
-                if (!this.url) {
-                  this.output = 'Please enter a URL.';
-                  this.showOutput = true;
-                  return;
-                }
-                if (this.format === 'svg') {
-                  const link = \`/svg?url=\${encodeURIComponent(this.url)}&page=\${encodeURIComponent(this.page)}.svg\`;
-                  this.generatedLink = link;
-                } else if (this.format === 'html') {
-                  const link = \`/html?url=\${encodeURIComponent(this.url)}\`;
-                  this.generatedLink = link;
-                } else {
-                  try {
-                    const res = await fetch(\`/\${this.format}?url=\${encodeURIComponent(this.url)}\`);
-                    const text = await res.text();
-                    this.output = res.ok ? text : \`Error: \${text}\`;
-                    this.showOutput = true;
-                  } catch (err) {
-                    this.output = 'An error occurred while making the request.';
-                    this.showOutput = true;
-                  }
-                }
-              }
-            }
-          }
-        </script>
-      </body>
-    </html>
+      <div id="output" class="mt-4">
+      </div>
+    </div>
+
+    <iframe hidden name=htmz onload="setTimeout(()=>document.querySelector(contentWindow.location.hash||null)?.replaceWith(...contentDocument.body.childNodes))"></iframe>
+  </body>
+</html>
   `;
   return c.html(page);
 });
