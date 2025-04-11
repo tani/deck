@@ -87,6 +87,7 @@ app.get('/generate', async (c) => {
   }
 
   const renderLinkHTML = (link: string) => `
+    <!DOCTYPE html>
     <div id="output" class="mt-4">
       <div class="alert alert-success">
         <strong>Link:</strong>
@@ -98,6 +99,7 @@ app.get('/generate', async (c) => {
   `
 
   const renderCodeHTML = (code: string) => `
+    <!DOCTYPE html>
     <div id="output" class="mt-4">
       <div class="alert alert-success">
         <strong>Code:</strong>
@@ -189,6 +191,9 @@ app.get('/', (c) => {
       }
       .github-ribbon a:hover {
         background-color: #333;
+      }
+      form .mb-3:has([value="svg"]:not(:checked)) + .mb-3 {
+        display: none;
       }
     </style>
   </head>
