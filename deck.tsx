@@ -248,6 +248,7 @@ app.get("/", (c) => {
                       type="url"
                       class="form-control"
                       name="url"
+                      id="url"
                       placeholder="https://example.com/deck.md"
                       required
                     />
@@ -256,7 +257,7 @@ app.get("/", (c) => {
                     <label for="format" class="form-label">
                       Select Output Format
                     </label>
-                    <select class="form-select" name="format">
+                    <select class="form-select" name="format" id="format">
                       <option value="html">HTML</option>
                       <option value="svg">SVG (Specify Page)</option>
                       <option value="md">Markdown Embed Code</option>
@@ -271,6 +272,7 @@ app.get("/", (c) => {
                       type="number"
                       class="form-control"
                       name="page"
+                      id="page"
                       min="0"
                       value="0"
                     />
