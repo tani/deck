@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "hono": "jsr:@hono/hono@^4.7.6",
+    "marp-core": "npm:@marp-team/marp-core@^4.0.1",
+    "cheerio": "npm:cheerio@^1.0.0"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "hono/jsx"
+  }
+}
