@@ -78,7 +78,7 @@ app.get("/html", async (c) => {
   const { html, css } = marp.render(md);
   return c.html(
     <>
-      {`<!DOCTYPE html>`}
+      {raw(`<!DOCTYPE html>`)}
       <html>
         <head>
           <meta charset="UTF-8" />
@@ -205,7 +205,7 @@ const githubRibbonLink = css`
 app.get("/", (c) => {
   return c.html(
     <>
-      {`<!DOCTYPE html>`}
+      {raw(`<!DOCTYPE html>`)}
       <html>
         <head>
           <meta charset="UTF-8" />
